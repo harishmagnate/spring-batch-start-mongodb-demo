@@ -1,3 +1,40 @@
+// File: src/main/java/com/example/batch/BatchInfrastructureConfig.java
+package com.example.batch.config;
+
+import org.springframework.batch.core.JobRepository;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.SimpleJobLauncher;
+import org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.ResourcelessTransactionManager;
+
+@Configuration
+public class BatchInfrastructureConfig {
+
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        return new ResourcelessTransactionManager();
+    }
+
+    @Bean
+    public JobRepository jobRepository(PlatformTransactionManager transactionManager) throws Exception {
+        MapJobRepositoryFactoryBean factory = new MapJobRepositoryFactoryBean(transactionManager);
+        factory.afterPropertiesSet();
+        return factory.getObject();
+    }
+
+    @Bean
+    public JobLauncher jobLauncher(JobRepository jobRepository) throws Exception {
+        SimpleJobLauncher launcher = new SimpleJobLauncher();
+        launcher.setJobRepository(jobRepository);
+        launcher.afterPropertiesSet();
+        return launcher;
+    }
+}
+
+
 // File: src/main/java/com/example/batch/MemberActivityBatchApplication.java
 package com.example.batch;
 
