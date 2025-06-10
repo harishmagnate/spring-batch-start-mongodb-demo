@@ -14,43 +14,40 @@ public class MemberActivityBatchApplication {
 // File: src/main/java/com/example/batch/config/BatchConfig.java
 package com.example.batch.config;
 
-import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
-import org.springframework.batch.core.configuration.annotation.DefaultBatchConfigurer;
-
 import com.example.batch.model.Activity;
 import com.example.batch.model.Member;
 import com.example.batch.processor.MemberProcessor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.*;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.builder.JobBuilderHelper;
+import org.springframework.batch.core.job.builder.SimpleJobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.builder.StepBuilderHelper;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.data.MongoItemWriter;
 import org.springframework.batch.item.support.builder.MongoItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 @Configuration
-@EnableBatchProcessing
 public class BatchConfig {
 
     @Bean
-    public Job memberActivityJob(JobBuilderFactory jobs, Step step) {
-        return jobs.get("memberActivityJob")
+    public Job memberActivityJob(Step memberStep) {
+        return new JobBuilder("memberActivityJob")
                 .incrementer(new RunIdIncrementer())
-                .flow(step)
-                .end()
+                .start(memberStep)
                 .build();
     }
 
     @Bean
-    public Step memberStep(StepBuilderFactory steps,
-                           MemberReader reader,
+    public Step memberStep(MemberReader reader,
                            ItemProcessor<Member, Activity> processor,
                            MongoItemWriter<Activity> writer) {
-        return steps.get("memberStep")
+        return new StepBuilder("memberStep")
                 .<Member, Activity>chunk(10)
                 .reader(reader)
                 .processor(processor)
@@ -64,17 +61,6 @@ public class BatchConfig {
                 .template(mongoTemplate)
                 .collection("activities")
                 .build();
-    }
-
-    @Bean
-    @Primary
-    public BatchConfigurer batchConfigurer() {
-        return new DefaultBatchConfigurer() {
-            @Override
-            public void setDataSource(javax.sql.DataSource dataSource) {
-                // Override without setting a datasource
-            }
-        };
     }
 }
 
@@ -238,4 +224,4 @@ public class BatchController {
 // File: src/main/resources/application.properties
 spring.data.mongodb.uri=mongodb://localhost:27017/batchdb
 spring.batch.job.enabled=false
-spring.batch.jdbc.initialize-schema=never
+spring.batch.jdbc.enabled=false
