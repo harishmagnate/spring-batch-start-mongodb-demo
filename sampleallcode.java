@@ -14,6 +14,9 @@ public class MemberActivityBatchApplication {
 // File: src/main/java/com/example/batch/config/BatchConfig.java
 package com.example.batch.config;
 
+import org.springframework.batch.core.configuration.annotation.BatchConfigurer;
+import org.springframework.batch.core.configuration.annotation.DefaultBatchConfigurer;
+
 import com.example.batch.model.Activity;
 import com.example.batch.model.Member;
 import com.example.batch.processor.MemberProcessor;
