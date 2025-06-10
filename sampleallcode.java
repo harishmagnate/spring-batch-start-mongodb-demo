@@ -238,3 +238,4 @@ public class BatchController {
 // File: src/main/resources/application.properties
 spring.data.mongodb.uri=mongodb://localhost:27017/batchdb
 spring.batch.job.enabled=false
+spring.batch.jdbc.initialize-schema=never
