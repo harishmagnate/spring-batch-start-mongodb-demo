@@ -1,40 +1,3 @@
-// File: src/main/java/com/example/batch/BatchInfrastructureConfig.java
-package com.example.batch.config;
-
-import org.springframework.batch.core.JobRepository;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
-import org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.ResourcelessTransactionManager;
-
-@Configuration
-public class BatchInfrastructureConfig {
-
-    @Bean
-    public PlatformTransactionManager transactionManager() {
-        return new ResourcelessTransactionManager();
-    }
-
-    @Bean
-    public JobRepository jobRepository(PlatformTransactionManager transactionManager) throws Exception {
-        MapJobRepositoryFactoryBean factory = new MapJobRepositoryFactoryBean(transactionManager);
-        factory.afterPropertiesSet();
-        return factory.getObject();
-    }
-
-    @Bean
-    public JobLauncher jobLauncher(JobRepository jobRepository) throws Exception {
-        SimpleJobLauncher launcher = new SimpleJobLauncher();
-        launcher.setJobRepository(jobRepository);
-        launcher.afterPropertiesSet();
-        return launcher;
-    }
-}
-
-
 // File: src/main/java/com/example/batch/MemberActivityBatchApplication.java
 package com.example.batch;
 
@@ -57,11 +20,8 @@ import com.example.batch.processor.MemberProcessor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.job.builder.JobBuilderHelper;
-import org.springframework.batch.core.job.builder.SimpleJobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.core.step.builder.StepBuilderHelper;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.data.MongoItemWriter;
 import org.springframework.batch.item.support.builder.MongoItemWriterBuilder;
@@ -106,33 +66,53 @@ package com.example.batch.config;
 
 import com.example.batch.model.Member;
 import org.bson.Document;
-import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Component;
 
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 @Component
-public class MemberReader implements ItemReader<Member> {
+public class MemberReader extends AbstractItemCountingItemStreamItemReader<Member> {
 
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    private Iterator<Member> memberIterator;
+    private static final int CHUNK_SIZE = 10;
+    private final Queue<Member> buffer = new LinkedList<>();
+
+    public MemberReader() {
+        setName("memberReader");
+    }
 
     @Override
-    public Member read() {
-        if (memberIterator == null) {
-            List<Member> members = mongoTemplate.aggregate(
-                List.of(new Document("$match", new Document("status", "active"))),
-                "members",
-                Member.class
-            ).getMappedResults();
-            memberIterator = members.iterator();
+    protected Member doRead() {
+        if (buffer.isEmpty()) {
+            int currentPage = getCurrentItemCount() / CHUNK_SIZE;
+
+            Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("status").is("active")),
+                Aggregation.skip((long) currentPage * CHUNK_SIZE),
+                Aggregation.limit(CHUNK_SIZE)
+            );
+
+            AggregationResults<Member> results = mongoTemplate.aggregate(
+                    aggregation,
+                    "members",
+                    Member.class);
+
+            List<Member> members = results.getMappedResults();
+            if (members.isEmpty()) return null;
+            buffer.addAll(members);
         }
-        return memberIterator.hasNext() ? memberIterator.next() : null;
+        return buffer.poll();
     }
 }
 
