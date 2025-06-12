@@ -32,13 +32,13 @@ public class BatchInfrastructureConfig {
     }
 
     @Bean
-    public JobRepository jobRepository(MongoTemplate mongoTemplate, PlatformTransactionManager transactionManager) throws Exception {
-        MongoJobRepositoryFactoryBean factoryBean = new MongoJobRepositoryFactoryBean();
-        factoryBean.setMongoTemplate(mongoTemplate);
-        factoryBean.setTransactionManager(transactionManager);
-        factoryBean.afterPropertiesSet();
-        return factoryBean.getObject();
-    }
+public JobRepository jobRepository(MongoTemplate mongoTemplate, MongoTransactionManager transactionManager) throws Exception {
+	MongoJobRepositoryFactoryBean jobRepositoryFactoryBean = new MongoJobRepositoryFactoryBean();
+	jobRepositoryFactoryBean.setMongoOperations(mongoTemplate);
+	jobRepositoryFactoryBean.setTransactionManager(transactionManager);
+	jobRepositoryFactoryBean.afterPropertiesSet();
+	return jobRepositoryFactoryBean.getObject();
+}
 
     @Bean
     public JobLauncher jobLauncher(JobRepository jobRepository) {
