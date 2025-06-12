@@ -12,17 +12,16 @@ public class MemberActivityBatchApplication {
 }
 
 // File: src/main/java/com/example/batch/config/BatchInfrastructureConfig.java
-package com.example.batch.config;
-
-import org.springframework.batch.core.JobRepository;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.launch.support.TaskExecutorJobLauncherBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.repository.support.MongoJobRepositoryFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.ResourcelessTransactionManager;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.TaskExecutorJobLauncherBuilder;
+import org.springframework.core.task.SyncTaskExecutor;
 
 @Configuration
 public class BatchInfrastructureConfig {
@@ -33,11 +32,12 @@ public class BatchInfrastructureConfig {
     }
 
     @Bean
-    public JobRepository jobRepository(MongoTemplate mongoTemplate, PlatformTransactionManager transactionManager) {
-        return new org.springframework.batch.extensions.mongo.MongoJobRepositoryFactoryBean()
-                .mongoTemplate(mongoTemplate)
-                .transactionManager(transactionManager)
-                .getObject();
+    public JobRepository jobRepository(MongoTemplate mongoTemplate, PlatformTransactionManager transactionManager) throws Exception {
+        MongoJobRepositoryFactoryBean factoryBean = new MongoJobRepositoryFactoryBean();
+        factoryBean.setMongoTemplate(mongoTemplate);
+        factoryBean.setTransactionManager(transactionManager);
+        factoryBean.afterPropertiesSet();
+        return factoryBean.getObject();
     }
 
     @Bean
@@ -48,6 +48,7 @@ public class BatchInfrastructureConfig {
                 .build();
     }
 }
+
 
 // File: src/main/java/com/example/batch/config/BatchConfig.java
 package com.example.batch.config;
